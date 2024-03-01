@@ -8,10 +8,12 @@ import os
 import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+import pandas as pd
 
 import docker
 from docker.errors import DockerException, ImageNotFound
 from docker.models.containers import Container as DockerContainer
+from typing import Any
 
 from autogpt.agents.agent import Agent
 from autogpt.agents.utils.exceptions import (
@@ -30,6 +32,55 @@ logger = logging.getLogger(__name__)
 
 ALLOWLIST_CONTROL = "allowlist"
 DENYLIST_CONTROL = "denylist"
+
+
+
+
+@command(
+    "execute_query_code",
+    "Executes code having the query and how the query response is to be handled",
+    {
+        "code": JSONSchema(
+            type=JSONSchema.Type.STRING,
+            description="Python code with SQLAlchemy query to be run",
+            required=True,
+        ),
+    },
+)
+async def execute_query_code(code: str) -> Any:
+    """Create and execute a Python file in a Docker container and return the STDOUT of the
+    executed code. If there is any data that needs to be captured use a print statement
+
+    Args:
+        code (str): The Python code to run
+        name (str): A name to be given to the Python file
+
+    Returns:
+        str: The STDOUT captured from the code when it ran
+    """
+    try:
+        # Local namespace where the executed code will run
+        # local_namespace = {"db": db, "pd": pd, "jsonify": jsonify}
+        local_namespace = {"pd": pd}
+        
+        # Execute the code
+        exec(code, globals(), local_namespace)
+        
+        # Assuming the executed code stores its final result in a variable named 'result'
+        result = local_namespace.get('result')
+        
+        if result is not None:
+            # If the code execution produced a result, return it
+            # return jsonify(result)
+            return result
+        else:
+            # Handle the case where no result is produced
+            # return jsonify({"error": "The provided code did not produce a result"}), 400
+            return 'The provided code did not produce a result'
+    except Exception as e:
+        # Handle execution errors
+        # return jsonify({"error": str(e)}), 500
+        raise str(e)
 
 
 @command(

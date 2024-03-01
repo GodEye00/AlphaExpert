@@ -61,6 +61,9 @@ class Config(SystemSettings, arbitrary_types_allowed=True):
     openai_functions: bool = False
     embedding_model: str = "text-embedding-ada-002"
     browse_spacy_language_model: str = "en_core_web_sm"
+    elasticsearch_cloud_id: str = ""
+    elasticsearch_api_key: str = ""
+    elasticsearch_index: str = ""
     # Run loop configuration
     continuous_mode: bool = False
     continuous_limit: int = 0
