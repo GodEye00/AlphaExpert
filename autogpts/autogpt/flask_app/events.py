@@ -2,10 +2,13 @@ from celery import group, chord
 from flask_socketio import emit, join_room
 from flask import request, current_app
 import re
+from pathlib import Path
+from typing import Optional
 
 from app import socketio
 # from services.tasks import retrieve_conversation_from_cache, retrieve_passages_task, process_and_emit, delete_conversation_from_cache
 
+from autogpt.app.main import run_auto_gpt
 
 conversations = {}
 default_messages = [
@@ -68,6 +71,32 @@ def handle_connect():
     user = authenticate_user(request)
     conversation_id = user.conversation_id if user else get_user_from_session()
     join_room(conversation_id)
+
+    # Extract messages from the request
+    settings = {
+        'continuous': request.args.get('continuous', type=bool),
+        'continuous_limit': request.args.get('continuous_limit', type=int),
+        'ai_settings': request.args.get('ai_settings', type=str),
+        'prompt_settings': request.args.get('prompt_settings', type=str),
+        'skip_reprompt': request.args.get('skip_reprompt', type=bool),
+        'speak': request.args.get('speak', type=bool),
+        'debug': request.args.get('debug', type=bool),
+        'gpt3only': request.args.get('gpt3only', type=bool),
+        'gpt4only': request.args.get('gpt4only', type=bool),
+        'memory_type': request.args.get('memory_type', type=str),
+        'browser_name': request.args.get('browser_name', type=str),
+        'allow_downloads': request.args.get('allow_downloads', type=bool),
+        'skip_news': request.args.get('skip_news', type=bool),
+        # 'working_directory': Path(request.args.get('working_directory', type=str)),
+        'workspace_directory': request.args.get('workspace_directory', type=lambda x: Path(x) if x else x),
+        'install_plugin_deps': request.args.get('install_plugin_deps', type=bool),
+        'ai_name': request.args.get('ai_name', default=None, type=str),
+        'ai_role': request.args.get('ai_role', default=None, type=str),
+        'ai_goals': tuple(request.args.getlist('ai_goals', type=str)),
+    }
+    run_auto_gpt(**settings)
+
+
 
 # @socketio.on('chat')
 # def handle_client_message(json):
@@ -136,6 +165,7 @@ def handle_client_message(json):
     if index:
         index =  'search-'+re.sub(r'[\s/]+', '-', index).strip().lower()
     size = json.get('size', 2)
+    
 
     initiate_retrieval_and_processing(conversation_id, index, size, user_message, models)
 
